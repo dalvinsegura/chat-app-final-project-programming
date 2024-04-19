@@ -1,8 +1,10 @@
 from tkinter import *
 import pyrebase
 from datetime import datetime
+import random
+import string
 
-user_name = "Anonymous"
+
 
 firebase = pyrebase.initialize_app({
     'apiKey': "AIzaSyD2jv9Y-3B7d8Xz8ZyK1i3bF4k3K1zJ6JY",
@@ -19,7 +21,10 @@ firebase = pyrebase.initialize_app({
 db = firebase.database()
 
 
-def chat_room():
+def chat_room(chat_code):
+    print("Chat room code: ", chat_code)
+    print("Name: ", user_name)
+    chat_ref = db.child(chat_code)
     chat = Tk()
     chat.title("Chatbot")
 
@@ -33,19 +38,18 @@ def chat_room():
     # Send function
     def send():
         user_message = e.get()
-        txt.insert(END, "\n" + "You -> " + user_message)
+        txt.insert(END, "\n" + f'{user_name} -> '  + user_message)
         e.delete(0, END)
         save_message(user_message)
 
     def save_message(message):
-        chat_ref = db.child('chat_messages')
-        chat_ref.push({
-            'sender': 'user',
+        db.child(chat_code).push({
+            'sender': user_name,
             'message': message,
             'timestamp': datetime.now().isoformat()
         })
 
-    lable1 = Label(chat, bg=BG_COLOR, fg=TEXT_COLOR, text="Welcome", font=FONT_BOLD, pady=10, width=20, height=1).grid(
+    lable1 = Label(chat, bg=BG_COLOR, fg=TEXT_COLOR, text=f'Chat room code: {chat_code}', font=FONT_BOLD, pady=10, height=1).grid(
         row=0)
 
     txt = Text(chat, bg=BG_COLOR, fg=TEXT_COLOR, font=FONT, width=60)
@@ -68,46 +72,56 @@ def chat_room():
         # Delete the previous messages
         txt.delete(1.0, END)
         print("Stream handler called")
-        print("Params: ", params)
-        chat_ref = db.child('chat_messages')
-        messages = chat_ref.get().val()
-        if messages is not None:
+        # print("Params: ", params)
+        messages = db.child(chat_code).get().val()
+
+        if messages is not None and len(messages) > 0:
             print("Messages are not None")
             for message_id, message_data in messages.items():
-                txt.insert(END, f"\nBot -> {message_data['message']}")
+                txt.insert(END, f"\n{message_data['sender']} -> {message_data['message']}")
         else:
             # Let's fetch the initial messages
             print("Messages are None")
             # If the messages are None, let's add a message to the chat saying that there are no messages without saving it to the database
             txt.insert(END, f"\nBot -> There are no messages in the chat")
 
-    my_stream = db.child("chat_messages").stream(stream_handler, None, "chat_messages")
-
+    my_stream = db.child("/").stream(stream_handler)
     chat.mainloop()
 
 
 def create_chat():
-    chat_name = input("Enter the name of the chat you want to create: ")
-    chat_ref = db.child('chats').child(chat_name)
-    if chat_ref.get().val() is None:
-        chat_ref.set({
-            'created_at': datetime.now().isoformat(),
-            'created_by': user_name,
-            'messages': []
-        })
-        print(f"Chat '{chat_name}' created successfully")
-    else:
-        print(f"Chat '{chat_name}' already exists.")
+    # Forget the main frame
+    lable1.pack_forget()
+    description_label.pack_forget()
+    create_chat_button.pack_forget()
+    join_chat_label.pack_forget()
+    join_chat_entry.pack_forget()
+    join_chat_button.pack_forget()
+    go_back_button.pack_forget()
+    current_name_label.pack_forget()
+    name_label.pack_forget()
+    name_entry.pack_forget()
+    join_button.pack_forget()
+    root.destroy()
+
+    #Let's generate a random chat code: 6 characters long with uppercase letters and digits. Example: 'AB3CD4'
+    random_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+    chat_room(random_code)
+
 
 
 def join_chat():
-    chat_code = input("Enter the code of the chat you want to join: ")
-    chat_ref = db.child('chats').child(chat_code)
+    chat_code = join_chat_entry.get()
+    #Let's check if the chat exists in the database
+    chat_ref = db.child(chat_code)
     if chat_ref.get().val() is not None:
-        print(f"Joined chat '{chat_code}'")
-        # Aquí puedes implementar la lógica para unirse al chat
+        root.destroy()
+        chat_room(chat_code)
     else:
         print(f"Chat '{chat_code}' does not exist.")
+
+
 
 
 BG_GRAY = "#ABB2B9"
@@ -128,8 +142,8 @@ def show_main_frame():
 
 
 def join_or_create():
+    global user_name
     user_name = name_entry.get()
-    print(user_name)
     if user_name:
         name_label.pack_forget()
         name_entry.pack_forget()
@@ -162,6 +176,7 @@ def join_or_create():
         current_name_label.insert(END, f"Nombre actual: {user_name}")
         current_name_label.pack(side=BOTTOM, padx=20, pady=5)
         current_name_label.config(state=DISABLED)
+        # go_back_button.pack(side=BOTTOM, padx=20, pady=5)
 
 
 
@@ -215,7 +230,7 @@ current_name_label = Text(root, bg=BG_COLOR, fg=TEXT_COLOR, font=FONT, bd=0)
 
 go_back_button = Button(root, text="Volver Atrás", font="Helvetica 13 bold", fg="#fff", bg=BG_COLOR, bd=0,
                         command=show_main_frame)
-go_back_button.pack(side=BOTTOM, padx=20, pady=5)
+# go_back_button.pack(side=BOTTOM, padx=20, pady=5)
 
 chat_frame = Frame(root)
 
