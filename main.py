@@ -27,6 +27,10 @@ def chat_room(chat_code):
     chat_ref = db.child(chat_code)
     chat = Tk()
     chat.title("Chatbot")
+    # block the chat window from being resized
+    chat.resizable(width=False, height=False)
+
+
 
     BG_GRAY = "#ABB2B9"
     BG_COLOR = "#17202A"
@@ -36,11 +40,12 @@ def chat_room(chat_code):
     FONT_BOLD = "Helvetica 13 bold"
 
     # Send function
-    def send():
+    def send_func():
         user_message = e.get()
         txt.insert(END, "\n" + f'{user_name} -> '  + user_message)
         e.delete(0, END)
         save_message(user_message)
+        chat.bind("<Return>", (lambda event: send_func()))
 
     def save_message(message):
         db.child(chat_code).push({
@@ -66,7 +71,8 @@ def chat_room(chat_code):
     e.grid(row=2, column=0)
 
     send = Button(chat, text="Send", font=FONT_BOLD, bg=BG_GRAY,
-                  command=send).grid(row=2, column=1)
+                  command=send_func).grid(row=2, column=1)
+
 
     def stream_handler(params):
         # Delete the previous messages
@@ -102,7 +108,7 @@ def create_chat():
     name_label.pack_forget()
     name_entry.pack_forget()
     join_button.pack_forget()
-    root.destroy()
+    # root.destroy()
 
     #Let's generate a random chat code: 6 characters long with uppercase letters and digits. Example: 'AB3CD4'
     random_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -116,11 +122,10 @@ def join_chat():
     #Let's check if the chat exists in the database
     chat_ref = db.child(chat_code)
     if chat_ref.get().val() is not None:
-        root.destroy()
+        # root.destroy()
         chat_room(chat_code)
     else:
         print(f"Chat '{chat_code}' does not exist.")
-
 
 
 
@@ -135,6 +140,7 @@ root = Tk()
 root.title("Chatbot")
 root.geometry("800x400")
 root.configure(bg=BG_COLOR)
+root.resizable(width=False, height=False)
 
 
 def show_main_frame():
@@ -180,9 +186,6 @@ def join_or_create():
 
 
 
-
-def show_chat_frame():
-    chat_frame.pack(fill=BOTH, expand=True)
 
 def show_main_frame():
     create_chat_button.pack_forget()
@@ -233,8 +236,6 @@ go_back_button = Button(root, text="Volver Atrás", font="Helvetica 13 bold", fg
 # go_back_button.pack(side=BOTTOM, padx=20, pady=5)
 
 chat_frame = Frame(root)
-
-# Aquí puedes agregar el resto de la lógica para el chat
 
 
 root.mainloop()
